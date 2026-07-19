@@ -1,0 +1,46 @@
+// Prisma schema — grows incrementally across the 8 sections.
+// §1 (now): User + Transaction, enough to demonstrate layered architecture.
+// Later: §2 RefreshToken, §3 Role/Permission, §4 AuditLog + states,
+//        §5 IdempotencyKey, §6 version column for optimistic locking.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  // password hash added in §2 (auth). Present now so seed users are realistic.
+  passwordHash String
+  createdAt    DateTime @default(now())
+
+  // A user can be the MAKER of many transactions. The checker relation is
+  // added in §4 when we build the maker-checker workflow.
+  transactions Transaction[] @relation("MakerTransactions")
+}
+
+model Transaction {
+  id        String   @id @default(uuid())
+  // Money as an integer in the smallest unit (cents). NEVER float for money —
+  // floats can't represent 0.10 exactly, causing rounding drift. (§4/§6 detail.)
+  amount    BigInt
+  currency  String   @default("USD")
+  reference String? // human note, e.g. "invoice 1234"
+
+  // §1: transactions start life as DRAFT. Full state machine arrives in §4.
+  status    String   @default("DRAFT")
+
+  makerId   String
+  maker     User     @relation("MakerTransactions", fields: [makerId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([makerId])
+  @@index([status])
+}
