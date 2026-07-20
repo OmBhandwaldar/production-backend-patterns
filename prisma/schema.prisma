@@ -21,7 +21,34 @@ model User {
 
   // A user can be the MAKER of many transactions. The checker relation is
   // added in §4 when we build the maker-checker workflow.
-  transactions Transaction[] @relation("MakerTransactions")
+  transactions  Transaction[]  @relation("MakerTransactions")
+  refreshTokens RefreshToken[]
+}
+
+// §2: Refresh tokens are stored server-side so they can be REVOKED and ROTATED
+// (unlike the stateless access token). This is what makes logout / reuse
+// detection possible.
+model RefreshToken {
+  id     String @id @default(uuid())
+  // We store a HASH of the token, never the raw value — same reasoning as
+  // passwords: a DB leak must not hand an attacker usable tokens.
+  tokenHash String @unique
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  // ROTATION + REUSE DETECTION:
+  //  - revokedAt: set when this token is rotated out or the user logs out.
+  //  - replacedById: the token that superseded this one on rotation. If a
+  //    client presents an already-revoked token, we know it was stolen/replayed
+  //    and can revoke the whole chain.
+  revokedAt    DateTime?
+  replacedById String?
+
+  @@index([userId])
 }
 
 model Transaction {
