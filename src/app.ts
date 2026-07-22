@@ -1,5 +1,8 @@
+import cookieParser from "cookie-parser";
 import express, { type Express, type Request, type Response } from "express";
+import { authenticate } from "./middleware/authenticate.js";
 import { errorHandler } from "./middleware/errorHandler.js";
+import { authRouter } from "./modules/auth/auth.routes.js";
 import { transactionRouter } from "./modules/transactions/transaction.routes.js";
 
 /**
@@ -15,6 +18,7 @@ export function buildApp(): Express {
   const app = express();
 
   app.use(express.json());
+  app.use(cookieParser()); // parses Cookie header → req.cookies (for refresh token)
 
   // Liveness/readiness probe. Kubernetes hits this to decide if the pod is
   // healthy. Keep it cheap and dependency-light (a DB check belongs in a
@@ -23,9 +27,11 @@ export function buildApp(): Express {
     res.json({ status: "ok", uptime: process.uptime() });
   });
 
-  // Section routers get mounted here as we build them:
-  app.use("/transactions", transactionRouter); // §1
-  // app.use("/auth", authRouter);             // §2
+  // Section routers:
+  app.use("/auth", authRouter); // §2 — PUBLIC (login/refresh/logout)
+  // §1 transactions are now PROTECTED: `authenticate` runs before the router,
+  // so every transaction route has a verified req.user (no more x-demo-user-id).
+  app.use("/transactions", authenticate, transactionRouter);
 
   // Error handler MUST be registered LAST — Express runs middleware in order,
   // and only an error middleware placed after all routes can catch their errors.
