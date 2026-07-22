@@ -24,12 +24,12 @@ function toResponse(tx: Transaction) {
   };
 }
 
-// TEMPORARY identity source. In §2 this becomes req.user.id from the verified
-// JWT. Identity must come from the auth layer, NEVER the request body.
+// Identity comes from the verified access JWT (set by the `authenticate`
+// middleware), NEVER from the request body or a client-supplied header.
+// The `authenticate` guard on the route guarantees req.user is present.
 function currentUserId(req: Request): string {
-  const id = req.header("x-demo-user-id");
-  if (!id) throw new UnauthorizedError("missing x-demo-user-id (temporary until §2 JWT auth)");
-  return id;
+  if (!req.user) throw new UnauthorizedError("not authenticated");
+  return req.user.id;
 }
 
 export const transactionController = {
