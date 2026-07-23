@@ -19,10 +19,38 @@ model User {
   passwordHash String
   createdAt    DateTime @default(now())
 
+  // §3 RBAC: one role per user (FK to the Role table). Nullable so the migration
+  // applies to existing rows; the seed assigns roles. The role NAME is embedded
+  // in the JWT for the cheap coarse check; permissions are resolved from the DB.
+  roleId String?
+  role   Role?   @relation(fields: [roleId], references: [id])
+
+  // §3: bumping this invalidates all of a user's existing access tokens at once
+  // (instant role revocation / "log out everywhere"). Embedded in the JWT as
+  // `ver`; authenticate rejects tokens whose ver != the user's current value.
+  tokenVersion Int @default(0)
+
   // A user can be the MAKER of many transactions. The checker relation is
   // added in §4 when we build the maker-checker workflow.
   transactions  Transaction[]  @relation("MakerTransactions")
   refreshTokens RefreshToken[]
+}
+
+// §3 RBAC: a Role is a named bundle of Permissions. Users are ASSIGNED roles;
+// routes are ENFORCED on permissions. Many-to-many with Permission (implicit
+// join table — no extra columns needed on the relation).
+model Role {
+  id          String       @id @default(uuid())
+  name        String       @unique // "admin" | "maker" | "checker"
+  permissions Permission[] @relation("RolePermissions")
+  users       User[]
+}
+
+// A single capability, named `resource:action` (e.g. "transaction:approve").
+model Permission {
+  id    String @id @default(uuid())
+  name  String @unique
+  roles Role[] @relation("RolePermissions")
 }
 
 // §2: Refresh tokens are stored server-side so they can be REVOKED and ROTATED
