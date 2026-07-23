@@ -11,15 +11,19 @@ import { env } from "../../config/env.js";
  */
 
 export interface AccessTokenClaims {
-  sub: string; // subject = the user id (stable identity only; roles come in §3)
+  sub: string; // subject = the user id
+  role: string | null; // §3: coarse role name for cheap checks (A of the A+B split)
+  ver: number; // §3: user.tokenVersion — mismatch ⇒ token superseded (instant revoke)
 }
 
 export const tokenService = {
-  /** Sign a short-lived access JWT. Payload holds only stable identity. */
-  signAccessToken(userId: string): string {
-    return jwt.sign({ sub: userId }, env.JWT_ACCESS_SECRET, {
-      expiresIn: env.JWT_ACCESS_TTL, // seconds
-    });
+  /** Sign a short-lived access JWT carrying identity + coarse role + version. */
+  signAccessToken(claims: AccessTokenClaims): string {
+    return jwt.sign(
+      { sub: claims.sub, role: claims.role, ver: claims.ver },
+      env.JWT_ACCESS_SECRET,
+      { expiresIn: env.JWT_ACCESS_TTL }, // seconds
+    );
   },
 
   /**
@@ -32,7 +36,11 @@ export const tokenService = {
     if (typeof decoded === "string" || !decoded.sub) {
       throw new Error("malformed access token");
     }
-    return { sub: decoded.sub as string };
+    return {
+      sub: decoded.sub as string,
+      role: (decoded.role as string | null) ?? null,
+      ver: (decoded.ver as number | undefined) ?? 0,
+    };
   },
 
   /**
