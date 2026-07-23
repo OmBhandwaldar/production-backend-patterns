@@ -37,7 +37,12 @@ export const authService = {
     await authRepository.createRefreshToken({ tokenHash: hash, userId: user.id, expiresAt });
 
     return {
-      accessToken: tokenService.signAccessToken(user.id),
+      // Embed coarse role + current tokenVersion (the "A" of A+B).
+      accessToken: tokenService.signAccessToken({
+        sub: user.id,
+        role: user.role?.name ?? null,
+        ver: user.tokenVersion,
+      }),
       refreshToken: raw,
       userId: user.id,
     };
@@ -66,6 +71,11 @@ export const authService = {
       throw new UnauthorizedError("refresh token expired");
     }
 
+    // Re-read the user so the NEW access token reflects the CURRENT role +
+    // tokenVersion (a role change since login is picked up on refresh).
+    const user = await authRepository.findUserById(existing.userId);
+    if (!user) throw new UnauthorizedError("user no longer exists");
+
     // ROTATE atomically: create the successor (inheriting the chain's expiry),
     // then revoke the old one pointing at the successor. All-or-nothing.
     const { raw, hash: newHash } = tokenService.generateRefreshToken();
@@ -78,7 +88,11 @@ export const authService = {
     });
 
     return {
-      accessToken: tokenService.signAccessToken(existing.userId),
+      accessToken: tokenService.signAccessToken({
+        sub: user.id,
+        role: user.role?.name ?? null,
+        ver: user.tokenVersion,
+      }),
       refreshToken: raw,
     };
   },

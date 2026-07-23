@@ -16,12 +16,14 @@ export interface CreateRefreshTokenInput {
 }
 
 export const authRepository = {
+  // Include the role relation so login/refresh can embed the role name + read
+  // tokenVersion when signing the access token.
   findUserByEmail(email: string, client: Db = prisma) {
-    return client.user.findUnique({ where: { email } });
+    return client.user.findUnique({ where: { email }, include: { role: true } });
   },
 
   findUserById(id: string, client: Db = prisma) {
-    return client.user.findUnique({ where: { id } });
+    return client.user.findUnique({ where: { id }, include: { role: true } });
   },
 
   createRefreshToken(input: CreateRefreshTokenInput, client: Db = prisma) {
