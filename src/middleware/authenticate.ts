@@ -22,8 +22,11 @@ export function authenticate(req: Request, _res: Response, next: NextFunction) {
   const token = header.slice("Bearer ".length).trim();
 
   try {
-    const { sub } = tokenService.verifyAccessToken(token);
-    req.user = { id: sub };
+    const { sub, role, ver } = tokenService.verifyAccessToken(token);
+    // Stateless: identity + coarse role + version come straight from the token.
+    // The ver freshness check happens in `authorize` (cached), keeping this path
+    // DB-free. (roles come in §3, decided embed-coarse + resolve-live.)
+    req.user = { id: sub, role, ver };
     next();
   } catch (err) {
     // Distinguish expired (client should refresh) from otherwise invalid.

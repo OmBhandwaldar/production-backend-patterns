@@ -6,7 +6,11 @@
 declare global {
   namespace Express {
     interface Request {
-      user?: { id: string };
+      // Set by `authenticate` from the verified JWT claims (stateless).
+      //  - role: coarse role name (A of the A+B split); may be null.
+      //  - ver:  token's tokenVersion, checked against the user's current value
+      //          in `authorize` for instant revocation.
+      user?: { id: string; role: string | null; ver: number };
     }
   }
 }
