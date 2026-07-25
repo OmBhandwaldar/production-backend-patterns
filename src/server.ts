@@ -29,6 +29,9 @@ async function shutdown(signal: string) {
     logger.error("graceful shutdown timed out — forcing exit");
     process.exit(1);
   }, 10_000);
+  // Passive watchdog: the timer can still force-exit a hung shutdown at 10s, but
+  // unref() means it won't keep the process alive on its own — a clean shutdown
+  // that finishes early exits immediately instead of stalling until the timer fires.
   forceTimer.unref();
 
   server.close(async () => {
