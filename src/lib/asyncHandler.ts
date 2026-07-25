@@ -9,6 +9,8 @@ import type { NextFunction, Request, Response } from "express";
  * stay focused on the happy path.
  * (Express 5 handles this natively; this remains the standard Express-4 idiom.)
  */
+
+//.catch(next) = .catch(err => next(err))
 export const asyncHandler =
   (fn: (req: Request, res: Response, next: NextFunction) => Promise<unknown>) =>
   (req: Request, res: Response, next: NextFunction) => {
