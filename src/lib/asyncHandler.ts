@@ -5,7 +5,7 @@ import type { NextFunction, Request, Response } from "express";
  * an `async (req,res) => {...}` returns a REJECTED PROMISE that Express never
  * awaits, so the request hangs forever. This higher-order function wraps a
  * handler and attaches `.catch(next)`, forwarding any thrown/rejected error to
- * the central error-handling middleware. Lets controllers just `throw` and
+ * the central error-handling middleware. Letscontrollers just `throw` and
  * stay focused on the happy path. 
  * (Express 5 handles this natively; this remains the standard Express-4 idiom.)
  */
